@@ -7,12 +7,15 @@ import time
 from airflow import DAG
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.operators.python import PythonOperator
+from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import Table, MetaData
+
 """ Работа функций:
 
 """
 postges_conn_id = 'postgres_db'
 TMP_DATA = r'/opt/airflow/tmp_data/inc_data'
-#TMP_DATA = r'C:/Users/w3bfr/OneDrive/Рабочий стол/Dev/de-start-sprint-etl-airflow-project/tmp_data/inc_data'  # Путь для отладки.
 BASE_URL = 'https://d5dg1j9kt695d30blp03.apigw.yandexcloud.net'
 NICKNAME = 'Dmitriidm'
 COHORT = '7' 
@@ -46,19 +49,9 @@ def generate_report(ti):
     print(f'{result_status}, {report_id}')
     
 
-# def save_files(file_names):
-#     report_id = generate_report()
-#     Path(TMP_DATA).mkdir(exist_ok=True, parents=True) 
-#     for file_name in file_names:
-#         SAVE_PATH = Path(TMP_DATA).joinpath(file_name) 
-#         url = f'https://storage.yandexcloud.net/s3-sprint3/cohort_{COHORT}/{NICKNAME}/project/{report_id}/{file_name}'
-#         df = pd.read_csv(url)
-#         df.to_csv(SAVE_PATH, index=False)
 def save_inc_files(file_names, ti):
-    #report_id = generate_report()
     report_id = ti.xcom_pull(key='report_id')
     date = '2025-06-11'
-    #report_id = 'TWpBeU5TMHdOaTB4TmxReE56b3dNRG94TmdsRWJXbDBjbWxwWkcwPQ=='
     response = re.get(
         f'{BASE_URL}/get_increment?report_id={report_id}&date={str(date)}T00:00:00',
         headers=HEADERS).json()
@@ -82,7 +75,20 @@ def upload_data_staging(file_name, pg_table, pg_schema):
 
     postgres_hook = PostgresHook(postges_conn_id)
     engine = postgres_hook.get_sqlalchemy_engine()
-    insert_data = df.to_sql(pg_table, engine, schema=pg_schema, if_exists='append', index=False)
+    #insert_data = df.to_sql(pg_table, engine, schema=pg_schema, if_exists='append', index=False)
+    
+    metadata = MetaData()
+    table = Table(pg_table, metadata, autoload_with=engine, schema=pg_schema)
+    with engine.begin() as conn:
+        for _, row in df.iterrows():
+            stmt = insert(table).values(row.to_dict())
+            update_dict = {col: row[col] for col in df.columns if col != 'uniq_id'}
+            stmt = stmt.on_conflict_do_update(
+                index_elements=['uniq_id'],
+                set_=update_dict
+            )
+
+            conn.execute(stmt)
 
 
 args = {
@@ -92,11 +98,26 @@ args = {
 }
 
 with DAG (
-    'load_staging_inc_data',
+    'load_stagigng_inc_data',
      default_args=args,
      catchup=False,
      schedule_interval=None
 ) as dag:
+    
+    DDL_staging = SQLExecuteQueryOperator(
+        task_id = 'DDL_staging',
+        conn_id=postges_conn_id,
+        autocommit=True,
+        sql='sql_scripts/DDL_staging.sql'
+    )
+
+    DDL_mart = SQLExecuteQueryOperator(
+        task_id = 'DDL_mart',
+        conn_id=postges_conn_id,
+        autocommit=True,
+        sql='sql_scripts/DDL_mart.sql'
+    )
+
     generate_report = PythonOperator(
         task_id = 'generate_report',
         python_callable=generate_report
@@ -115,10 +136,43 @@ with DAG (
                    'pg_schema': 'staging',
                    'pg_table': 'user_order_log'}
     )
- 
-    generate_report >> save_inc_files >> upload_data_staging
-# if __name__ == '__main__':
-#     #save_files(FILE_NAMES)
-#     #get_increment(FILE_NAMES)
-#     upload_data_staging(FILE_NAME)
+    
+    DML_d_city = SQLExecuteQueryOperator(
+        task_id = 'DML_d_city',
+        conn_id=postges_conn_id,
+        autocommit=True,
+        sql='sql_scripts/DML_d_city.sql'
+    )
+
+    DML_d_customer = SQLExecuteQueryOperator(
+        task_id = 'DML_d_customer',
+        conn_id=postges_conn_id,
+        autocommit=True,
+        sql='sql_scripts/DML_d_customer.sql'
+    )
+
+    DML_d_item = SQLExecuteQueryOperator(
+        task_id = 'DML_d_item',
+        conn_id=postges_conn_id,
+        autocommit=True,
+        sql='sql_scripts/DML_d_item.sql'
+    )
+    
+    DML_f_sales = SQLExecuteQueryOperator(
+        task_id = 'DML_f_sales',
+        conn_id=postges_conn_id,
+        autocommit=True,
+        sql='sql_scripts/DML_f_sales.sql'
+    )
+
+
+    (
+        [DDL_staging, DDL_mart]
+        >> generate_report
+        >> save_inc_files
+        >> upload_data_staging
+        >> [DML_d_city, DML_d_customer, DML_d_item]
+        >> DML_f_sales
+    )
+
     
