@@ -15,3 +15,5 @@ CREATE TABLE IF NOT EXISTS staging.user_order_log
     payment_amount numeric(10, 2),
     status         VARCHAR(10)
 );
+
+
