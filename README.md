@@ -25,6 +25,10 @@
 └──  req.txt/            # Зависимости проекта.
 ```
 
+#### 📈 Graph
+![graph](/images/dags.png)
+![view](/images/dag_view.png)
+
 #### 🗺️ Entity-Relationship Diagram
 ![mart](/images/mart.png)
 

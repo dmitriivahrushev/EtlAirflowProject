@@ -4,6 +4,7 @@ from airflow import DAG
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 
 
+
 postges_conn_id = 'postgres_db'
 
 args = {
@@ -13,10 +14,10 @@ args = {
 }
 
 with DAG (
-    'build_f_customer_retention',
+    dag_id='build_f_customer_retention',
     default_args=args,
     catchup=False,
-    schedule_interval=None
+    schedule_interval='0 1 * * *'
 ) as dag:
     
     DDL_mart_f_customer_retention = SQLExecuteQueryOperator(

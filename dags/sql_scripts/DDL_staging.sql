@@ -1,7 +1,6 @@
 CREATE SCHEMA IF NOT EXISTS staging;
 
-CREATE TABLE IF NOT EXISTS staging.user_order_log
-(
+CREATE TABLE IF NOT EXISTS staging.user_order_log (
     uniq_id        VARCHAR(32) PRIMARY KEY NOT NULL,
     date_time      timestamp NOT NULL,
     city_id        integer   NOT NULL,

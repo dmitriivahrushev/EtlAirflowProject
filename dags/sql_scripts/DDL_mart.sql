@@ -1,8 +1,6 @@
 CREATE SCHEMA IF NOT EXISTS mart;
 
-
-CREATE TABLE IF NOT EXISTS mart.d_calendar
-(
+CREATE TABLE IF NOT EXISTS mart.d_calendar (
   date_id                  INT PRIMARY KEY NOT NULL,
   date_actual              DATE NOT NULL,
   epoch                    BIGINT NOT NULL,
@@ -77,19 +75,16 @@ FROM (SELECT '1970-01-01'::DATE + SEQUENCE.DAY AS datum
       FROM GENERATE_SERIES(0, 29219) AS SEQUENCE (DAY)
       GROUP BY SEQUENCE.DAY) DQ
 ON CONFLICT (date_id) DO NOTHING;
---ORDER BY 1;
 
 
-CREATE TABLE IF NOT EXISTS mart.d_city
-(
+CREATE TABLE IF NOT EXISTS mart.d_city (
     id        SERIAL PRIMARY KEY,
     city_id   INTEGER UNIQUE,
     city_name VARCHAR(50)
 );
 
 
-CREATE TABLE IF NOT EXISTS mart.d_customer
-(
+CREATE TABLE IF NOT EXISTS mart.d_customer (
     id        SERIAL PRIMARY KEY,
     customer_id INTEGER NOT NULL UNIQUE,
     first_name  VARCHAR(15),
@@ -98,8 +93,7 @@ CREATE TABLE IF NOT EXISTS mart.d_customer
 );
 
 
-CREATE TABLE IF NOT EXISTS mart.d_item
-(
+CREATE TABLE IF NOT EXISTS mart.d_item (
     id        SERIAL PRIMARY KEY,
     item_id   INTEGER NOT NULL UNIQUE,
     item_name VARCHAR(50)
