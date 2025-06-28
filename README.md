@@ -1,4 +1,4 @@
-# DeStartSprintEtlAirflowProject
+# EtlAirflowProject
 ![etl_image](/images/etl_image.jpg)
 
 #### 🧾 О проекте  
